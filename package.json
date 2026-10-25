@@ -1,0 +1,17 @@
+{
+  "name": "medimate",
+  "version": "1.0.0",
+  "description": "MediMate — A Personal Health Assistant",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": [
+    "medimate",
+    "health-assistant",
+    "medicine-reminders"
+  ],
+  "author": "",
+  "license": "ISC"
+}
