@@ -5,7 +5,11 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js"
+    "dev": "node server.js",
+    "build": "echo MediMate build ready"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   },
   "keywords": [
     "medimate",

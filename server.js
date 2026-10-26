@@ -21,8 +21,74 @@ const MIME_TYPES = {
   '.mp3': 'audio/mpeg',
   '.webm': 'audio/webm'
 };
+const assistantService = require('./assistantService');
 
 const server = http.createServer((req, res) => {
+  // CORS Preflight
+  if (req.method === 'OPTIONS') {
+    res.writeHead(204, {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+    });
+    res.end();
+    return;
+  }
+
+  // AI Status Endpoint
+  if (req.url === '/api/ai-status' && req.method === 'GET') {
+    res.writeHead(200, {
+      'Content-Type': 'application/json',
+      'Access-Control-Allow-Origin': '*'
+    });
+    const config = assistantService.getAIConfig();
+    res.end(JSON.stringify({
+      configured: config.configured,
+      provider: config.provider,
+      model: config.model
+    }));
+    return;
+  }
+
+  // Assistant Query Endpoint
+  if (req.url === '/api/assistant' && req.method === 'POST') {
+    let body = '';
+    req.on('data', chunk => {
+      body += chunk.toString();
+      if (body.length > 1e6) { // 1MB flood protection
+        req.connection.destroy();
+      }
+    });
+    req.on('end', async () => {
+      try {
+        const payload = JSON.parse(body || '{}');
+        const result = await assistantService.handleAssistantRequest(payload);
+        res.writeHead(200, {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        });
+        res.end(JSON.stringify({
+          success: true,
+          reply: result.reply,
+          provider: result.provider,
+          configured: result.configured,
+          warning: result.warning || null
+        }));
+      } catch (err) {
+        console.error('Error handling assistant request:', err);
+        res.writeHead(500, {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        });
+        res.end(JSON.stringify({
+          success: false,
+          error: err.message || 'Internal server error processing assistant query'
+        }));
+      }
+    });
+    return;
+  }
+
   // Normalize URL to prevent directory traversal
   let reqPath = decodeURI(req.url.split('?')[0]);
   if (reqPath === '/' || reqPath === '') {

@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "cleanUrls": true,
+  "rewrites": [
+    {
+      "source": "/((?!api/|.*\\.[\\w]+$).*)",
+      "destination": "/index.html"
+    }
+  ]
+}

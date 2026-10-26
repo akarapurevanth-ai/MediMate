@@ -21,3 +21,7 @@ Thumbs.db
 *.bak
 scratch/
 temp/
+
+.env
+.env.*
+!.env.example
