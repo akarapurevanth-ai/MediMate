@@ -271,6 +271,190 @@ async function dbMissReminder(reminderId, userId) {
   return await query;
 }
 
+// ============================================================
+// MEDICAL RECORDS DATABASE HELPERS
+// ============================================================
+
+async function dbFetchMedicalRecords(userId) {
+  if (!supabase) return { data: [], error: null };
+  let uid = userId;
+  if (!uid) {
+    const { data: sData } = await supabase.auth.getSession();
+    uid = sData?.session?.user?.id;
+  }
+  if (!uid) return { data: [], error: null };
+
+  const { data, error } = await supabase
+    .from('medical_records')
+    .select('*')
+    .eq('user_id', uid)
+    .order('created_at', { ascending: false });
+
+  if (error) return { data: [], error };
+
+  const mapped = (data || []).map(row => ({
+    id: row.id,
+    name: row.name || 'Document',
+    category: row.category || 'General',
+    dataUrl: row.data_url || '',
+    size: row.file_size || '',
+    date: row.created_at || new Date().toISOString()
+  }));
+
+  return { data: mapped, error: null };
+}
+
+async function dbSaveMedicalRecord(doc, userId) {
+  if (!supabase || !userId) return { data: null, error: { message: 'Not authenticated' } };
+  const row = {
+    user_id: userId,
+    name: doc.name || 'Document',
+    category: doc.category || 'General',
+    data_url: doc.dataUrl || '',
+    file_size: doc.size || ''
+  };
+  return await supabase.from('medical_records').insert([row]).select();
+}
+
+async function dbDeleteMedicalRecord(id, userId) {
+  if (!supabase) return { error: null };
+  let query = supabase.from('medical_records').delete().eq('id', id);
+  if (userId) query = query.eq('user_id', userId);
+  return await query;
+}
+
+// ============================================================
+// CAREGIVERS DATABASE HELPERS
+// ============================================================
+
+async function dbFetchCaregivers(userId) {
+  if (!supabase) return { data: [], error: null };
+  let uid = userId;
+  if (!uid) {
+    const { data: sData } = await supabase.auth.getSession();
+    uid = sData?.session?.user?.id;
+  }
+  if (!uid) return { data: [], error: null };
+
+  const { data, error } = await supabase
+    .from('caregivers')
+    .select('*')
+    .eq('user_id', uid)
+    .order('created_at', { ascending: false });
+
+  if (error) return { data: [], error };
+
+  const mapped = (data || []).map(row => ({
+    id: row.id,
+    email: row.email || '',
+    perms: row.permissions || { schedule: true, confirmed: true, missed: true, instructions: true, docs: false, adherence: true },
+    status: row.status || 'invited'
+  }));
+
+  return { data: mapped, error: null };
+}
+
+async function dbSaveCaregiver(cg, userId) {
+  if (!supabase || !userId) return { data: null, error: { message: 'Not authenticated' } };
+  const row = {
+    user_id: userId,
+    email: cg.email || '',
+    permissions: cg.perms || { schedule: true, confirmed: true, missed: true, instructions: true, docs: false, adherence: true },
+    status: cg.status || 'invited'
+  };
+  return await supabase.from('caregivers').insert([row]).select();
+}
+
+async function dbUpdateCaregiver(id, updates, userId) {
+  if (!supabase) return { error: null };
+  const row = {};
+  if (updates.perms) row.permissions = updates.perms;
+  if (updates.status) row.status = updates.status;
+
+  let query = supabase.from('caregivers').update(row).eq('id', id);
+  if (userId) query = query.eq('user_id', userId);
+  return await query;
+}
+
+async function dbDeleteCaregiver(id, userId) {
+  if (!supabase) return { error: null };
+  let query = supabase.from('caregivers').delete().eq('id', id);
+  if (userId) query = query.eq('user_id', userId);
+  return await query;
+}
+
+// ============================================================
+// FAVOURITE VOICES DATABASE HELPERS
+// ============================================================
+
+async function dbFetchVoices(userId) {
+  if (!supabase) return { data: [], error: null };
+  let uid = userId;
+  if (!uid) {
+    const { data: sData } = await supabase.auth.getSession();
+    uid = sData?.session?.user?.id;
+  }
+  if (!uid) return { data: [], error: null };
+
+  const { data, error } = await supabase
+    .from('favourite_voices')
+    .select('*')
+    .eq('user_id', uid)
+    .order('created_at', { ascending: false });
+
+  if (error) return { data: [], error };
+
+  const mapped = (data || []).map(row => ({
+    id: row.id,
+    label: row.label || '',
+    dataUrl: row.data_url || ''
+  }));
+
+  return { data: mapped, error: null };
+}
+
+async function dbSaveVoice(voice, userId) {
+  if (!supabase || !userId) return { data: null, error: { message: 'Not authenticated' } };
+  const row = {
+    user_id: userId,
+    label: voice.label || 'Voice',
+    data_url: voice.dataUrl || ''
+  };
+  return await supabase.from('favourite_voices').insert([row]).select();
+}
+
+async function dbDeleteVoice(id, userId) {
+  if (!supabase) return { error: null };
+  let query = supabase.from('favourite_voices').delete().eq('id', id);
+  if (userId) query = query.eq('user_id', userId);
+  return await query;
+}
+
+// ============================================================
+// PROFILE & PREFERENCES HELPERS
+// ============================================================
+
+async function dbFetchProfile(userId) {
+  if (!supabase || !userId) return { data: null, error: null };
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', userId)
+    .maybeSingle();
+
+  return { data, error };
+}
+
+async function dbSaveProfile(userId, profileData) {
+  if (!supabase || !userId) return { data: null, error: null };
+  const row = {
+    id: userId,
+    name: profileData.name || 'User',
+    reminder_prefs: profileData.prefs || { reminderVoice: 'standard', language: 'English', notifications: true, seniorMode: false }
+  };
+  return await supabase.from('profiles').upsert(row).select();
+}
+
 // Export functions to global scope for index.html
 if (typeof window !== 'undefined') {
   window.MediMateDB = {
@@ -289,6 +473,18 @@ if (typeof window !== 'undefined') {
     dbAddReminderRecord,
     dbConfirmReminder,
     dbSnoozeReminder,
-    dbMissReminder
+    dbMissReminder,
+    dbFetchMedicalRecords,
+    dbSaveMedicalRecord,
+    dbDeleteMedicalRecord,
+    dbFetchCaregivers,
+    dbSaveCaregiver,
+    dbUpdateCaregiver,
+    dbDeleteCaregiver,
+    dbFetchVoices,
+    dbSaveVoice,
+    dbDeleteVoice,
+    dbFetchProfile,
+    dbSaveProfile
   };
 }

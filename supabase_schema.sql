@@ -44,6 +44,36 @@ CREATE TABLE IF NOT EXISTS public.reminder_history (
   created_at timestamptz DEFAULT now()
 );
 
+-- 4. Medical Records Table
+CREATE TABLE IF NOT EXISTS public.medical_records (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid REFERENCES auth.users ON DELETE CASCADE,
+  name text NOT NULL,
+  category text,
+  data_url text,
+  file_size text,
+  created_at timestamptz DEFAULT now()
+);
+
+-- 5. Caregivers Table
+CREATE TABLE IF NOT EXISTS public.caregivers (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid REFERENCES auth.users ON DELETE CASCADE,
+  email text NOT NULL,
+  permissions jsonb DEFAULT '{"schedule": true, "confirmed": true, "missed": true, "instructions": true, "docs": false, "adherence": true}'::jsonb,
+  status text DEFAULT 'invited',
+  created_at timestamptz DEFAULT now()
+);
+
+-- 6. Favourite Voices Table
+CREATE TABLE IF NOT EXISTS public.favourite_voices (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid REFERENCES auth.users ON DELETE CASCADE,
+  label text NOT NULL,
+  data_url text NOT NULL,
+  created_at timestamptz DEFAULT now()
+);
+
 -- ============================================================
 -- ROW LEVEL SECURITY (RLS) POLICIES
 -- Ensures each user can only read and write their own records
@@ -52,6 +82,9 @@ CREATE TABLE IF NOT EXISTS public.reminder_history (
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.medications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.reminder_history ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.medical_records ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.caregivers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.favourite_voices ENABLE ROW LEVEL SECURITY;
 
 -- Profiles Policy
 DO $$
@@ -86,6 +119,45 @@ BEGIN
     SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'reminder_history' AND policyname = 'Users manage their reminder history'
   ) THEN
     CREATE POLICY "Users manage their reminder history" ON public.reminder_history
+      FOR ALL TO authenticated
+      USING (auth.uid() = user_id)
+      WITH CHECK (auth.uid() = user_id);
+  END IF;
+END $$;
+
+-- Medical Records Policy
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'medical_records' AND policyname = 'Users manage their medical records'
+  ) THEN
+    CREATE POLICY "Users manage their medical records" ON public.medical_records
+      FOR ALL TO authenticated
+      USING (auth.uid() = user_id)
+      WITH CHECK (auth.uid() = user_id);
+  END IF;
+END $$;
+
+-- Caregivers Policy
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'caregivers' AND policyname = 'Users manage their caregivers'
+  ) THEN
+    CREATE POLICY "Users manage their caregivers" ON public.caregivers
+      FOR ALL TO authenticated
+      USING (auth.uid() = user_id)
+      WITH CHECK (auth.uid() = user_id);
+  END IF;
+END $$;
+
+-- Favourite Voices Policy
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'favourite_voices' AND policyname = 'Users manage their favourite voices'
+  ) THEN
+    CREATE POLICY "Users manage their favourite voices" ON public.favourite_voices
       FOR ALL TO authenticated
       USING (auth.uid() = user_id)
       WITH CHECK (auth.uid() = user_id);
